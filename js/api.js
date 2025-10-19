@@ -6,7 +6,7 @@ import { auth } from './auth.js';
 // 接口配置（与电脑端一致的环境变量）
 // ------------------------------
 const API_CONFIG = {
-    baseUrl: 'https://pwsmicdepzjqsodpedlw.supabase.co/rest/v1', // Supabase REST接口
+    baseUrl: 'https://pwsmicdepzjqsodpedlw.supabase.co', // Supabase REST接口
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c21pY2RlcHpqcXNvZHBlZGx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwMTY3MDIsImV4cCI6MjA3MzU5MjcwMn0.GCvgIDRunf6U9SFK8affQr13y9nWmxr3IKbzCb-HPbA',
     encryptionKey: '54b4706bd3ed19acb74318dfd1652a5b7216d63410abfc98d8464820d358fb4e' // 与电脑端完全一致
 };
@@ -294,4 +294,5 @@ function validateUser(userData, isUpdate = false) {
     }
 
     return null; // 验证通过
+
 }
