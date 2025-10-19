@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>荣诚管理系统 - 移动端</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  
+  <!-- 配置Tailwind -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36D399',
+            warning: '#FFAB00',
+            danger: '#F53F3F',
+            dark: '#1D2129',
+            'gray-light': '#F2F3F5',
+            'gray-medium': '#C9CDD4'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+      .nav-shadow {
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .text-balance {
+        text-wrap: balance;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-dark font-sans min-h-screen flex flex-col">
+  <!-- 加载遮罩 -->
+  <div id="loader" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+    <div class="flex flex-col items-center">
+      <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <p class="mt-4 text-primary font-medium">加载中...</p>
+    </div>
+  </div>
+
+  <!-- 登录页面 -->
+  <div id="login-page" class="flex-1 flex flex-col justify-center px-6 py-12">
+    <div class="max-w-md mx-auto w-full">
+      <div class="text-center mb-10">
+        <h1 class="text-[clamp(1.8rem,5vw,2.5rem)] font-bold text-primary mb-2">荣诚管理系统</h1>
+        <p class="text-gray-500">超级管理员移动端</p>
+      </div>
+      
+      <form id="login-form" class="space-y-5">
+        <div class="space-y-2">
+          <label for="email" class="block text-sm font-medium text-gray-700">邮箱</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+              <i class="fa fa-envelope-o"></i>
+            </span>
+            <input type="email" id="email" name="email" required
+                  class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
+                  placeholder="请输入邮箱">
+          </div>
+        </div>
+        
+        <div class="space-y-2">
+          <label for="password" class="block text-sm font-medium text-gray-700">密码</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+              <i class="fa fa-lock"></i>
+            </span>
+            <input type="password" id="password" name="password" required
+                  class="w-full pl-10 pr-10 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
+                  placeholder="请输入密码">
+            <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+              <i class="fa fa-eye-slash"></i>
+            </button>
+          </div>
+        </div>
+        
+        <button type="submit" 
+                class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center">
+          <span>登录</span>
+          <i class="fa fa-arrow-right ml-2"></i>
+        </button>
+        
+        <div class="text-center text-gray-500 text-sm">
+          <p>忘记密码? <a href="#" class="text-primary hover:underline">联系技术支持</a></p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 主应用界面 -->
+  <div id="app" class="hidden flex-1 flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-30">
+      <div class="px-6 py-4 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-primary">荣诚管理系统</h1>
+        <div class="flex items-center space-x-4">
+          <button id="notification-btn" class="relative text-gray-600 hover:text-primary transition-colors">
+            <i class="fa fa-bell-o text-xl"></i>
+            <span class="absolute -top-1 -right-1 w-4 h-4 bg-danger rounded-full text-white text-xs flex items-center justify-center">3</span>
+          </button>
+          <div class="relative" id="user-menu-container">
+            <button id="user-menu-btn" class="flex items-center space-x-2">
+              <img src="https://picsum.photos/id/1005/40/40" alt="用户头像" class="w-8 h-8 rounded-full object-cover border-2 border-primary/20">
+              <span class="text-sm font-medium hidden sm:inline-block">超级管理员</span>
+              <i class="fa fa-angle-down text-gray-500 hidden sm:block"></i>
+            </button>
+            <div id="user-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 hidden z-50">
+              <a href="#" id="profile-link" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <i class="fa fa-user-o mr-2"></i>个人资料
+              </a>
+              <a href="#" id="logout-link" class="block px-4 py-2 text-sm text-danger hover:bg-gray-100">
+                <i class="fa fa-sign-out mr-2"></i>退出登录
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-y-auto scrollbar-hide pb-20">
+      <!-- 概览卡片 -->
+      <section class="px-6 py-5">
+        <h2 class="text-lg font-semibold mb-4">系统概览</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white rounded-xl p-4 card-shadow">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">总用户数</p>
+                <h3 class="text-2xl font-bold mt-1" id="total-users">24</h3>
+              </div>
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <i class="fa fa-users"></i>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center text-xs">
+              <span class="text-secondary flex items-center">
+                <i class="fa fa-arrow-up mr-1"></i>12%
+              </span>
+              <span class="text-gray-500 ml-2">较上月</span>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl p-4 card-shadow">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">活跃门店</p>
+                <h3 class="text-2xl font-bold mt-1" id="active-stores">89</h3>
+              </div>
+              <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                <i class="fa fa-shopping-bag"></i>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center text-xs">
+              <span class="text-secondary flex items-center">
+                <i class="fa fa-arrow-up mr-1"></i>8%
+              </span>
+              <span class="text-gray-500 ml-2">较上月</span>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl p-4 card-shadow">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">今日登录</p>
+                <h3 class="text-2xl font-bold mt-1" id="today-logins">15</h3>
+              </div>
+              <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
+                <i class="fa fa-sign-in"></i>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center text-xs">
+              <span class="text-danger flex items-center">
+                <i class="fa fa-arrow-down mr-1"></i>3%
+              </span>
+              <span class="text-gray-500 ml-2">较昨日</span>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl p-4 card-shadow">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">数据同步</p>
+                <h3 class="text-2xl font-bold mt-1" id="sync-status">正常</h3>
+              </div>
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <i class="fa fa-refresh"></i>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center text-xs">
+              <span class="text-secondary flex items-center">
+                <i class="fa fa-check mr-1"></i>上次同步: 10分钟前
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 使用统计图表 -->
+      <section class="px-6 py-3">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">应用使用统计</h2>
+          <div class="text-sm text-primary">
+            <select id="stats-period" class="bg-transparent border-none focus:ring-0 pr-6 appearance-none bg-image-none">
+              <option value="week">近7天</option>
+              <option value="month" selected>近30天</option>
+              <option value="year">近一年</option>
+            </select>
+            <i class="fa fa-angle-down ml-1"></i>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-4 card-shadow">
+          <canvas id="usage-chart" height="200"></canvas>
+        </div>
+      </section>
+
+      <!-- 最近动态 -->
+      <section class="px-6 py-3">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">最近动态</h2>
+          <a href="#" class="text-sm text-primary">查看全部</a>
+        </div>
+        <div class="space-y-3" id="activities-container">
+          <!-- 动态项将通过JS添加 -->
+        </div>
+      </section>
+
+      <!-- 用户管理 -->
+      <section class="px-6 py-3 mb-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">用户管理</h2>
+          <button id="add-user-btn" class="bg-primary text-white text-sm py-1.5 px-3 rounded-lg flex items-center">
+            <i class="fa fa-plus mr-1"></i> 添加用户
+          </button>
+        </div>
+        <div class="bg-white rounded-xl overflow-hidden card-shadow">
+          <div class="p-3 border-b border-gray-100">
+            <div class="relative">
+              <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              <input type="text" placeholder="搜索用户..." 
+                    class="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none text-sm">
+            </div>
+          </div>
+          <div class="max-h-[300px] overflow-y-auto scrollbar-hide" id="users-container">
+            <!-- 用户列表将通过JS添加 -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 底部导航 -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white nav-shadow z-30">
+      <div class="flex justify-around">
+        <a href="#" class="flex flex-col items-center py-3 px-4 text-primary">
+          <i class="fa fa-tachometer text-xl"></i>
+          <span class="text-xs mt-1">概览</span>
+        </a>
+        <a href="#" class="flex flex-col items-center py-3 px-4 text-gray-500">
+          <i class="fa fa-users text-xl"></i>
+          <span class="text-xs mt-1">用户</span>
+        </a>
+        <a href="#" class="flex flex-col items-center py-3 px-4 text-gray-500">
+          <i class="fa fa-shopping-bag text-xl"></i>
+          <span class="text-xs mt-1">门店</span>
+        </a>
+        <a href="#" class="flex flex-col items-center py-3 px-4 text-gray-500">
+          <i class="fa fa-cog text-xl"></i>
+          <span class="text-xs mt-1">设置</span>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <!-- 添加用户模态框 -->
+  <div id="add-user-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6 hidden">
+    <div class="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+        <h3 class="text-lg font-semibold">添加新用户</h3>
+        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <form id="add-user-form" class="p-6 space-y-4">
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+          <input type="text" id="username" name="username" required
+                class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none text-sm"
+                placeholder="请输入用户名">
+        </div>
+        
+        <div>
+          <label for="user-email" class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+          <input type="email" id="user-email" name="email" required
+                class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none text-sm"
+                placeholder="请输入邮箱">
+        </div>
+        
+        <div>
+          <label for="user-password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+          <input type="password" id="user-password" name="password" required
+                class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none text-sm"
+                placeholder="请设置密码（至少6位）">
+        </div>
+        
+        <div>
+          <label for="user-role" class="block text-sm font-medium text-gray-700 mb-1">角色</label>
+          <select id="user-role" name="role" required
+                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none text-sm">
+            <option value="admin">管理员</option>
+            <option value="employee">员工</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="store-limit" class="block text-sm font-medium text-gray-700 mb-1">门店数量限制</label>
+          <input type="number" id="store-limit" name="store_limit" min="1" max="1000" value="10"
+                class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none text-sm"
+                placeholder="请输入门店数量限制">
+        </div>
+        
+        <button type="submit" 
+                class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 mt-4">
+          创建用户
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // 加密解密函数（与电脑端保持一致）
+    const ENCRYPTION_KEY = '54b4706bd3ed19acb74318dfd1652a5b7216d63410abfc98d8464820d358fb4e'; // 实际应用中应从环境变量获取
+    
+    function encryptData(data) {
+      try {
+        const crypto = window.crypto || window.msCrypto;
+        if (!crypto) throw new Error('浏览器不支持加密API');
+        
+        const keyBuffer = hexToUint8Array(ENCRYPTION_KEY);
+        if (keyBuffer.length !== 32) {
+          throw new Error('加密密钥必须是64位十六进制字符串(32字节)');
+        }
+        
+        const iv = crypto.getRandomValues(new Uint8Array(16));
+        const textEncoder = new TextEncoder();
+        const dataBuffer = textEncoder.encode(JSON.stringify(data));
+        
+        return window.crypto.subtle.importKey(
+          'raw',
+          keyBuffer,
+          { name: 'AES-CBC' },
+          false,
+          ['encrypt']
+        ).then(key => {
+          return window.crypto.subtle.encrypt(
+            { name: 'AES-CBC', iv: iv },
+            key,
+            dataBuffer
+          );
+        }).then(encrypted => {
+          return uint8ArrayToHex(iv) + ':' + uint8ArrayToHex(new Uint8Array(encrypted));
+        });
+      } catch (error) {
+        console.error('加密失败:', error);
+        return null;
+      }
+    }
+    
+    function decryptData(encryptedData) {
+      try {
+        const crypto = window.crypto || window.msCrypto;
+        if (!crypto) throw new Error('浏览器不支持加密API');
+        
+        const keyBuffer = hexToUint8Array(ENCRYPTION_KEY);
+        if (keyBuffer.length !== 32) {
+          throw new Error('加密密钥必须是64位十六进制字符串(32字节)');
+        }
+        
+        const parts = encryptedData.split(':');
+        if (parts.length !== 2) {
+          throw new Error('无效的加密数据格式');
+        }
+        
+        const iv = hexToUint8Array(parts[0]);
+        const encryptedText = hexToUint8Array(parts[1]);
+        
+        return window.crypto.subtle.importKey(
+          'raw',
+          keyBuffer,
+          { name: 'AES-CBC' },
+          false,
+          ['decrypt']
+        ).then(key => {
+          return window.crypto.subtle.decrypt(
+            { name: 'AES-CBC', iv: iv },
+            key,
+            encryptedText
+          );
+        }).then(decrypted => {
+          const textDecoder = new TextDecoder();
+          return JSON.parse(textDecoder.decode(decrypted));
+        });
+      } catch (error) {
+        console.error('解密失败:', error);
+        return null;
+      }
+    }
+    
+    // 辅助函数：十六进制字符串转Uint8Array
+    function hexToUint8Array(hex) {
+      return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    }
+    
+    // 辅助函数：Uint8Array转十六进制字符串
+    function uint8ArrayToHex(array) {
+      return Array.from(array, byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
+    }
+
+    // UUID生成函数
+    function generateUUID() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    // 模拟数据
+    const recentActivities = [
+      { id: 1, user: '张三', action: '创建了新门店', target: '麦当劳(北京店)', time: '10分钟前', avatar: 'https://picsum.photos/id/1012/40/40' },
+      { id: 2, user: '系统', action: '自动同步了', target: '30家门店数据', time: '30分钟前', avatar: 'https://picsum.photos/id/1000/40/40' },
+      { id: 3, user: '李四', action: '登录了系统', target: '从Windows设备', time: '1小时前', avatar: 'https://picsum.photos/id/1025/40/40' },
+      { id: 4, user: '王五', action: '修改了用户权限', target: '将赵六设为管理员', time: '2小时前', avatar: 'https://picsum.photos/id/1074/40/40' },
+      { id: 5, user: '系统', action: '检测到异常登录', target: '来自未知IP地址', time: '3小时前', avatar: 'https://picsum.photos/id/1000/40/40' }
+    ];
+
+    const usersList = [
+      { id: 1, name: '张三', email: 'zhangsan@example.com', role: 'admin', status: 'active', stores: 15 },
+      { id: 2, name: '李四', email: 'lisi@example.com', role: 'employee', status: 'active', stores: 8 },
+      { id: 3, name: '王五', email: 'wangwu@example.com', role: 'employee', status: 'inactive', stores: 5 },
+      { id: 4, name: '赵六', email: 'zhaoliu@example.com', role: 'admin', status: 'active', stores: 22 },
+      { id: 5, name: '钱七', email: 'qianqi@example.com', role: 'employee', status: 'active', stores: 10 }
+    ];
+
+    // DOM元素
+    const loader = document.getElementById('loader');
+    const loginPage = document.getElementById('login-page');
+    const app = document.getElementById('app');
+    const loginForm = document.getElementById('login-form');
+    const togglePassword = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('password');
+    const userMenuBtn = document.getElementById('user-menu-btn');
+    const userMenu = document.getElementById('user-menu');
+    const logoutLink = document.getElementById('logout-link');
+    const addUserBtn = document.getElementById('add-user-btn');
+    const addUserModal = document.getElementById('add-user-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const addUserForm = document.getElementById('add-user-form');
+    const activitiesContainer = document.getElementById('activities-container');
+    const usersContainer = document.getElementById('users-container');
+
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', () => {
+      // 模拟加载过程
+      setTimeout(() => {
+        loader.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => loader.classList.add('hidden'), 300);
+        
+        // 检查本地存储中的登录状态
+        const savedSession = localStorage.getItem('admin_session');
+        if (savedSession) {
+          decryptData(savedSession).then(sessionData => {
+            if (sessionData && sessionData.expires > Date.now()) {
+              // 已登录状态，显示主应用
+              showApp();
+            } else {
+              // 会话过期，显示登录页
+              localStorage.removeItem('admin_session');
+              loginPage.classList.remove('hidden');
+            }
+          });
+        } else {
+          // 未登录，显示登录页
+          loginPage.classList.remove('hidden');
+        }
+      }, 1500);
+    });
+
+    // 显示主应用界面
+    function showApp() {
+      loginPage.classList.add('hidden');
+      app.classList.remove('hidden');
+      
+      // 初始化图表
+      initChart();
+      
+      // 加载最近动态
+      loadActivities();
+      
+      // 加载用户列表
+      loadUsers();
+    }
+
+    // 初始化使用统计图表
+    function initChart() {
+      const ctx = document.getElementById('usage-chart').getContext('2d');
+      
+      // 模拟数据
+      const labels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+      const data = [120, 190, 150, 220, 280, 310, 350, 320, 380, 420, 450, 490];
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '活跃用户数',
+            data: data,
+            backgroundColor: 'rgba(22, 93, 255, 0.1)',
+            borderColor: '#165DFF',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#165DFF',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              padding: 10,
+              cornerRadius: 6,
+              titleFont: {
+                size: 14
+              },
+              bodyFont: {
+                size: 13
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  size: 10
+                }
+              }
+            },
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                font: {
+                  size: 10
+                },
+                stepSize: 100
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 加载最近动态
+    function loadActivities() {
+      activitiesContainer.innerHTML = '';
+      
+      recentActivities.forEach(activity => {
+        const activityEl = document.createElement('div');
+        activityEl.className = 'bg-white rounded-xl p-4 card-shadow';
+        activityEl.innerHTML = `
+          <div class="flex">
+            <img src="${activity.avatar}" alt="${activity.user}" class="w-10 h-10 rounded-full mr-3">
+            <div class="flex-1">
+              <p class="text-sm">
+                <span class="font-medium">${activity.user}</span>
+                <span class="text-gray-600">${activity.action}</span>
+                <span class="font-medium">${activity.target}</span>
+              </p>
+              <p class="text-xs text-gray-500 mt-1">${activity.time}</p>
+            </div>
+          </div>
+        `;
+        activitiesContainer.appendChild(activityEl);
+      });
+    }
+
+    // 加载用户列表
+    function loadUsers() {
+      usersContainer.innerHTML = '';
+      
+      usersList.forEach(user => {
+        const userEl = document.createElement('div');
+        userEl.className = 'p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors';
+        userEl.innerHTML = `
+          <div class="flex justify-between items-center">
+            <div>
+              <h4 class="font-medium text-sm">${user.name}</h4>
+              <p class="text-xs text-gray-500 mt-0.5">${user.email}</p>
+            </div>
+            <div class="text-right">
+              <span class="inline-block px-2 py-0.5 text-xs rounded-full ${
+                user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-600'
+              }">${user.role === 'admin' ? '管理员' : '员工'}</span>
+              <p class="text-xs text-gray-500 mt-1">门店: ${user.stores}</p>
+            </div>
+          </div>
+        `;
+        usersContainer.appendChild(userEl);
+      });
+    }
+
+    // 事件监听
+    // 切换密码显示
+    togglePassword.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      
+      // 切换图标
+      const icon = togglePassword.querySelector('i');
+      if (type === 'password') {
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    });
+
+    // 用户菜单切换
+    userMenuBtn.addEventListener('click', () => {
+      userMenu.classList.toggle('hidden');
+    });
+
+    // 点击其他区域关闭用户菜单
+    document.addEventListener('click', (e) => {
+      if (!userMenuContainer.contains(e.target)) {
+        userMenu.classList.add('hidden');
+      }
+    });
+
+    // 退出登录
+    logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('admin_session');
+      app.classList.add('hidden');
+      loginPage.classList.remove('hidden');
+      userMenu.classList.add('hidden');
+    });
+
+    // 登录表单提交
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      // 模拟登录请求
+      try {
+        // 在实际应用中，这里应该是发送加密后的凭据到后端验证
+        const encryptedCreds = await encryptData({ email, password });
+        
+        // 模拟API请求
+        console.log('发送加密的登录凭据:', encryptedCreds);
+        
+        // 模拟登录成功
+        const sessionData = {
+          userId: generateUUID(),
+          email: email,
+          role: 'super_admin',
+          expires: Date.now() + 24 * 60 * 60 * 1000 // 24小时后过期
+        };
+        
+        // 加密并保存会话
+        const encryptedSession = await encryptData(sessionData);
+        localStorage.setItem('admin_session', encryptedSession);
+        
+        // 显示主应用
+        showApp();
+      } catch (error) {
+        alert('登录失败，请检查您的凭据');
+        console.error('登录错误:', error);
+      }
+    });
+
+    // 添加用户模态框控制
+    addUserBtn.addEventListener('click', () => {
+      addUserModal.classList.remove('hidden');
+      // 阻止背景滚动
+      document.body.style.overflow = 'hidden';
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      addUserModal.classList.add('hidden');
+      document.body.style.overflow = '';
+    });
+
+    // 点击模态框外部关闭
+    addUserModal.addEventListener('click', (e) => {
+      if (e.target === addUserModal) {
+        addUserModal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+    });
+
+    // 添加用户表单提交
+    addUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('user-email').value;
+      const password = document.getElementById('user-password').value;
+      const role = document.getElementById('user-role').value;
+      const storeLimit = document.getElementById('store-limit').value;
+      
+      // 模拟表单验证
+      if (!username || !email || !password) {
+        alert('请填写所有必填字段');
+        return;
+      }
+      
+      if (password.length < 6) {
+        alert('密码长度至少为6位');
+        return;
+      }
+      
+      try {
+        // 加密用户数据
+        const userData = {
+          id: generateUUID(),
+          name: username,
+          email: email,
+          password: password, // 实际应用中应在服务器端加密
+          role: role,
+          store_limit: parseInt(storeLimit),
+          created_at: new Date().toISOString()
+        };
+        
+        const encryptedUserData = await encryptData(userData);
+        
+        // 模拟API请求
+        console.log('发送加密的用户数据:', encryptedUserData);
+        
+        // 模拟成功响应
+        alert('用户创建成功');
+        
+        // 添加到本地列表并刷新
+        usersList.unshift({
+          id: userData.id,
+          name: username,
+          email: email,
+          role: role,
+          status: 'active',
+          stores: 0
+        });
+        
+        loadUsers();
+        
+        // 关闭模态框
+        addUserModal.classList.add('hidden');
+        document.body.style.overflow = '';
+        addUserForm.reset();
+      } catch (error) {
+        alert('创建用户失败，请重试');
+        console.error('创建用户错误:', error);
+      }
+    });
+  </script>
+</body>
+</html>
