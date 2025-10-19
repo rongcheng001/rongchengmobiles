@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>应用使用情况 - 超级管理员平台</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <button id="backBtn" class="btn-icon">←</button>
+        <div class="header-title">应用使用情况</div>
+    </header>
+
+    <!-- 主要内容 -->
+    <main class="container">
+        <!-- 统计卡片 -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                    <div style="font-size: 14px; color: #86868b;">总用户数</div>
+                    <div id="totalUsers" style="font-size: 20px; font-weight: 600;">--</div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #86868b;">总门店数</div>
+                    <div id="totalStores" style="font-size: 20px; font-weight: 600;">--</div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #86868b;">活跃门店率</div>
+                    <div id="activeRate" style="font-size: 20px; font-weight: 600;">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 门店活跃度图表（简化版） -->
+        <div class="usage-chart">
+            <div>门店活跃度趋势图（近7天）</div>
+        </div>
+
+        <!-- 平台分布 -->
+        <div class="card">
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">各平台门店分布</div>
+            <div id="platformDistribution">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <span>加载中...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用户活跃度 -->
+        <div class="card">
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">用户活跃度（近30天）</div>
+            <div id="userActivity">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <span>加载中...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { auth } from './js/auth.js';
+        import { getAppUsageStats } from './js/api.js';
+        import { showToast } from './js/utils.js';
+
+        // 检查登录状态
+        if (!auth.isLoggedIn() || !auth.isSuperAdmin()) {
+            window.location.href = 'index.html';
+        }
+
+        // DOM元素
+        const backBtn = document.getElementById('backBtn');
+        const totalUsers = document.getElementById('totalUsers');
+        const totalStores = document.getElementById('totalStores');
+        const activeRate = document.getElementById('activeRate');
+        const platformDistribution = document.getElementById('platformDistribution');
+        const userActivity = document.getElementById('userActivity');
+
+        // 页面加载初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 加载使用数据
+            loadUsageData();
+
+            // 返回按钮
+            backBtn.addEventListener('click', () => window.location.href = 'dashboard.html');
+        });
+
+        // 加载使用数据
+        async function loadUsageData() {
+            try {
+                const result = await getAppUsageStats();
+                
+                if (result.success && result.data) {
+                    const data = result.data;
+
+                    // 更新统计数字
+                    totalUsers.textContent = data.total_users || 0;
+                    totalStores.textContent = data.total_stores || 0;
+                    
+                    // 计算活跃率
+                    const rate = data.total_stores > 0 
+                        ? ((data.active_stores / data.total_stores) * 100).toFixed(1) + '%' 
+                        : '0.0%';
+                    activeRate.textContent = rate;
+
+                    // 渲染平台分布
+                    renderPlatformDistribution(data.platform_distribution || {});
+
+                    // 渲染用户活跃度
+                    renderUserActivity(data.user_activity || []);
+                } else {
+                    showToast(result.message || '获取使用数据失败', 'error');
+                }
+            } catch (error) {
+                showToast('获取使用数据异常', 'error');
+            }
+        }
+
+        // 渲染平台分布
+        function renderPlatformDistribution(distribution) {
+            if (Object.keys(distribution).length === 0) {
+                platformDistribution.innerHTML = '<div class="empty-state">暂无平台数据</div>';
+                return;
+            }
+
+            let html = '';
+            Object.entries(distribution).forEach(([platform, count]) => {
+                html += `
+                    <div class="platform-item">
+                        <div class="platform-name">${platform}</div>
+                        <div class="platform-count">${count} 个门店</div>
+                    </div>
+                `;
+            });
+
+            platformDistribution.innerHTML = html;
+        }
+
+        // 渲染用户活跃度
+        function renderUserActivity(activityList) {
+            if (activityList.length === 0) {
+                userActivity.innerHTML = '<div class="empty-state">暂无用户活跃数据</div>';
+                return;
+            }
+
+            let html = '<ul class="list">';
+            activityList.forEach(item => {
+                html += `
+                    <li class="list-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 16px; font-weight: 500;">${item.user_name}</div>
+                            <div style="color: ${item.active ? '#34c759' : '#86868b'}">
+                                ${item.active ? '活跃' : '未活跃'}
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 14px; color: #86868b;">
+                            最后操作: ${item.last_active_time ? formatRelativeTime(item.last_active_time) : '无'}
+                        </div>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+
+            userActivity.innerHTML = html;
+        }
+
+        // 日期格式化（复用utils逻辑）
+        function formatRelativeTime(date) {
+            if (!date) return '无';
+            const target = new Date(date);
+            const now = new Date();
+            const diff = now - target;
+
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (seconds < 60) return '刚刚';
+            if (minutes < 60) return `${minutes}分钟前`;
+            if (hours < 24) return `${hours}小时前`;
+            if (days < 7) return `${days}天前`;
+            return `${target.getFullYear()}-${(target.getMonth() + 1).toString().padStart(2, '0')}-${target.getDate().toString().padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>

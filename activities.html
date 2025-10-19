@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>最近动态 - 超级管理员平台</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <button id="backBtn" class="btn-icon">←</button>
+        <div class="header-title">最近动态</div>
+    </header>
+
+    <!-- 主要内容 -->
+    <main class="container">
+        <!-- 动态列表 -->
+        <div id="activitiesContainer">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <span>加载动态中...</span>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { auth } from './js/auth.js';
+        import { getRecentActivities } from './js/api.js';
+        import { showToast, formatRelativeTime } from './js/utils.js';
+
+        // 检查登录状态
+        if (!auth.isLoggedIn() || !auth.isSuperAdmin()) {
+            window.location.href = 'index.html';
+        }
+
+        // DOM元素
+        const backBtn = document.getElementById('backBtn');
+        const activitiesContainer = document.getElementById('activitiesContainer');
+
+        // 页面加载初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 加载最近动态
+            loadRecentActivities();
+
+            // 返回按钮
+            backBtn.addEventListener('click', () => window.location.href = 'dashboard.html');
+        });
+
+        // 加载最近动态
+        async function loadRecentActivities() {
+            try {
+                // 调用接口（获取最近20条动态）
+                const result = await getRecentActivities(20);
+                
+                if (result.success && result.data) {
+                    const activities = result.data;
+                    
+                    if (activities.length === 0) {
+                        activitiesContainer.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📜</div>
+                                <div>暂无动态记录</div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // 渲染动态列表
+                    let html = '<ul class="list">';
+                    activities.forEach(activity => {
+                        html += `
+                            <li class="list-item">
+                                <div class="activity-header">
+                                    <div class="activity-user">${activity.user_name}（${getRoleText(activity.user_role)}）</div>
+                                    <div class="activity-time">${formatRelativeTime(activity.created_at)}</div>
+                                </div>
+                                <div class="activity-content">${activity.content}</div>
+                            </li>
+                        `;
+                    });
+                    html += '</ul>';
+
+                    activitiesContainer.innerHTML = html;
+                } else {
+                    activitiesContainer.innerHTML = `<div class="empty-state">${result.message || '获取动态失败'}</div>`;
+                    showToast(result.message || '获取动态失败', 'error');
+                }
+            } catch (error) {
+                activitiesContainer.innerHTML = '<div class="empty-state">网络异常，请重试</div>';
+                showToast('获取动态异常', 'error');
+            }
+        }
+
+        // 辅助函数：角色文本转换
+        function getRoleText(role) {
+            const roleMap = {
+                'super_admin': '超级管理员',
+                'admin': '管理员',
+                'employee': '员工'
+            };
+            return roleMap[role] || role;
+        }
+    </script>
+</body>
+</html>

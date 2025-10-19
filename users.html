@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>用户管理 - 超级管理员平台</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <button id="backBtn" class="btn-icon">←</button>
+        <div class="header-title">用户管理</div>
+        <button id="addUserBtn" class="btn btn-primary">+ 新增用户</button>
+    </header>
+
+    <!-- 主要内容 -->
+    <main class="container">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" id="searchInput" class="form-input search-input" placeholder="搜索用户（姓名/邮箱）">
+            <button id="searchBtn" class="btn btn-primary">搜索</button>
+        </div>
+
+        <!-- 筛选栏 -->
+        <div class="card">
+            <div class="form-group">
+                <label class="form-label" for="roleFilter">角色筛选</label>
+                <select id="roleFilter" class="form-select">
+                    <option value="">所有角色</option>
+                    <option value="super_admin">超级管理员</option>
+                    <option value="admin">管理员</option>
+                    <option value="employee">员工</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 用户列表 -->
+        <div id="usersContainer">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <span>加载用户中...</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- 新增用户模态框 -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">新增用户</div>
+                <button id="closeModalBtn" class="btn-icon">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="form-group">
+                        <label class="form-label" for="userName">姓名</label>
+                        <input type="text" id="userName" class="form-input" placeholder="请输入姓名" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="userEmail">邮箱</label>
+                        <input type="email" id="userEmail" class="form-input" placeholder="请输入邮箱" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="userPassword">密码</label>
+                        <input type="password" id="userPassword" class="form-input" placeholder="至少6个字符" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="userRole">角色</label>
+                        <select id="userRole" class="form-select" required>
+                            <option value="admin">管理员</option>
+                            <option value="employee">员工</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="storeLimit">门店限制（1-1000）</label>
+                        <input type="number" id="storeLimit" class="form-input" min="1" max="1000" value="10" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelAddBtn" class="btn btn-secondary">取消</button>
+                <button id="confirmAddBtn" class="btn btn-primary">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth } from './js/auth.js';
+        import { getUsers, createUser } from './js/api.js';
+        import { showToast, debounce, formatRelativeTime } from './js/utils.js';
+
+        // 检查登录状态和权限
+        if (!auth.isLoggedIn() || !auth.isSuperAdmin()) {
+            window.location.href = 'index.html';
+        }
+
+        // DOM元素
+        const usersContainer = document.getElementById('usersContainer');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const roleFilter = document.getElementById('roleFilter');
+        const addUserBtn = document.getElementById('addUserBtn');
+        const addUserModal = document.getElementById('addUserModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelAddBtn = document.getElementById('cancelAddBtn');
+        const confirmAddBtn = document.getElementById('confirmAddBtn');
+        const addUserForm = document.getElementById('addUserForm');
+        const backBtn = document.getElementById('backBtn');
+
+        // 防抖搜索（300ms）
+        const debouncedSearch = debounce(loadUsers, 300);
+
+        // 页面加载初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 加载用户列表
+            loadUsers();
+
+            // 绑定事件
+            backBtn.addEventListener('click', () => window.location.href = 'dashboard.html');
+            searchBtn.addEventListener('click', loadUsers);
+            searchInput.addEventListener('input', debouncedSearch);
+            roleFilter.addEventListener('change', loadUsers);
+            addUserBtn.addEventListener('click', () => addUserModal.classList.add('show'));
+            closeModalBtn.addEventListener('click', () => addUserModal.classList.remove('show'));
+            cancelAddBtn.addEventListener('click', () => addUserModal.classList.remove('show'));
+            confirmAddBtn.addEventListener('click', handleAddUser);
+        });
+
+        // 加载用户列表
+        async function loadUsers() {
+            // 显示加载状态
+            usersContainer.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <span>加载用户中...</span>
+                </div>
+            `;
+
+            try {
+                // 获取筛选条件
+                const filters = {
+                    search: searchInput.value.trim(),
+                    role: roleFilter.value
+                };
+
+                // 调用接口
+                const result = await getUsers(filters);
+                
+                if (result.success && result.data) {
+                    const users = result.data;
+                    
+                    if (users.length === 0) {
+                        // 空状态
+                        usersContainer.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">👥</div>
+                                <div>没有找到符合条件的用户</div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // 渲染用户列表
+                    let html = '<ul class="list">';
+                    users.forEach(user => {
+                        html += `
+                            <li class="list-item">
+                                <div>
+                                    <div style="font-size: 17px; font-weight: 500;">${user.name}</div>
+                                    <div style="font-size: 14px; color: #86868b; margin-top: 4px;">${user.email}</div>
+                                    <span class="user-role ${user.role}">${getRoleText(user.role)}</span>
+                                </div>
+                                <div class="user-meta">
+                                    <div>门店限制: ${user.store_limit || 10}</div>
+                                    <div>创建时间: ${formatRelativeTime(user.created_at)}</div>
+                                </div>
+                            </li>
+                        `;
+                    });
+                    html += '</ul>';
+
+                    usersContainer.innerHTML = html;
+                } else {
+                    usersContainer.innerHTML = `<div class="empty-state">${result.message || '获取用户失败'}</div>`;
+                    showToast(result.message || '获取用户失败', 'error');
+                }
+            } catch (error) {
+                usersContainer.innerHTML = '<div class="empty-state">网络异常，请重试</div>';
+                showToast('获取用户异常', 'error');
+            }
+        }
+
+        // 处理新增用户
+        async function handleAddUser() {
+            // 验证表单
+            if (!addUserForm.checkValidity()) {
+                addUserForm.reportValidity();
+                return;
+            }
+
+            // 获取表单数据
+            const userData = {
+                name: document.getElementById('userName').value.trim(),
+                email: document.getElementById('userEmail').value.trim(),
+                password: document.getElementById('userPassword').value.trim(),
+                role: document.getElementById('userRole').value,
+                store_limit: parseInt(document.getElementById('storeLimit').value)
+            };
+
+            // 禁用按钮
+            confirmAddBtn.disabled = true;
+            confirmAddBtn.textContent = '创建中...';
+
+            try {
+                // 调用创建用户接口
+                const result = await createUser(userData);
+                
+                if (result.success) {
+                    // 关闭模态框
+                    addUserModal.classList.remove('show');
+                    // 重置表单
+                    addUserForm.reset();
+                    // 重新加载用户列表
+                    loadUsers();
+                    // 提示成功
+                    showToast('用户创建成功', 'success');
+                } else {
+                    showToast(result.message || '创建用户失败', 'error');
+                }
+            } catch (error) {
+                showToast('创建用户异常', 'error');
+            } finally {
+                // 恢复按钮
+                confirmAddBtn.disabled = false;
+                confirmAddBtn.textContent = '创建';
+            }
+        }
+
+        // 辅助函数：角色文本转换
+        function getRoleText(role) {
+            const roleMap = {
+                'super_admin': '超级管理员',
+                'admin': '管理员',
+                'employee': '员工'
+            };
+            return roleMap[role] || role;
+        }
+    </script>
+</body>
+</html>
